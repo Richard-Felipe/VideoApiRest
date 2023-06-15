@@ -25,14 +25,10 @@ public class HomeController : ControllerBase
     [HttpPost("/videos")]
     public async Task<IActionResult> Post([FromServices] VideoContext context, [FromBody] Video model)
     {
-        Video video = new Video();
-        video.Titulo = model.Titulo;
-        video.descricao = model.descricao;
-        video.URL = model.URL;
-
-        await context.Videos.AddAsync(video);
+        await context.Videos.AddAsync(model);
         await context.SaveChangesAsync();
 
-        return Created($"/videos/{video.Id}", video);
+        return Created($"/videos/{model.Id}", model);
     }
+    //[HttpPut("/")]
 }
