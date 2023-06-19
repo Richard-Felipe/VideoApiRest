@@ -1,5 +1,8 @@
 ﻿using ApiRest.Data;
+using ApiRest.Data.Dtos;
 using ApiRest.Models;
+using ApiRest.Profiles;
+using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,13 +11,23 @@ namespace ApiRest.Controllers;
 [ApiController]
 public class VideoController : ControllerBase
 {
-    [HttpGet("/videos")]
-    public async Task<IActionResult> Get([FromServices] VideoContext context) 
-        => Ok(await context.Videos.AsNoTracking().ToListAsync());
-    [HttpGet("/videos/{id:int}")]
-    public async Task<IActionResult> GetbyId([FromServices] VideoContext context, [FromRoute] int id)
+    private VideoContext _context;
+    private IMapper _mapper;
+
+    public VideoController(VideoContext context, IMapper mapper)
     {
-        var video = await context.Videos.FirstOrDefaultAsync(video => video.Id == id);
+        _context = context;
+        _mapper = mapper;
+    }
+
+    [HttpGet("/videos")]
+    public async Task<IActionResult> Get() 
+        => Ok(await _context.Videos.AsNoTracking().ToListAsync());
+
+    [HttpGet("/videos/{id:int}")]
+    public async Task<IActionResult> GetbyId([FromRoute] int id)
+    {
+        var video = await _context.Videos.FirstOrDefaultAsync(video => video.Id == id);
 
         if (video is null)
             return NotFound();
@@ -23,42 +36,41 @@ public class VideoController : ControllerBase
     }
 
     [HttpPost("/videos")]
-    public async Task<IActionResult> Post([FromServices] VideoContext context, [FromBody] Video model)
+    public async Task<IActionResult> Post([FromBody] CreateVideoDto videoDto)
     {
-        await context.Videos.AddAsync(model);
-        await context.SaveChangesAsync();
+        var videoAdd = _mapper.Map<Video>(videoDto);
 
-        return Created($"/videos/{model.Id}", model);
+        await _context.Videos.AddAsync(videoAdd);
+        await _context.SaveChangesAsync();
+
+        return Created($"/videos/{videoAdd.Id}", videoDto);
     }
 
     [HttpPut("videos/{id:int}")]
-    public async Task<IActionResult> Put([FromServices] VideoContext context, [FromRoute] int id, [FromBody] Video model)
+    public async Task<IActionResult> Put([FromRoute] int id, [FromBody] UpdateVideoDto videoDto)
     {
-        var video = await context.Videos.FirstOrDefaultAsync(x => x.Id == id);
+        var video = await _context.Videos.FirstOrDefaultAsync(x => x.Id == id);
 
         if (video is null)
             return NotFound();
 
-        video.Titulo = model.Titulo;
-        video.descricao = model.descricao;
-        video.URL = model.URL;
+        var videoUpdated = _mapper.Map(videoDto, video);
+        _context.Videos.Update(videoUpdated);
+        await _context.SaveChangesAsync();
 
-        context.Videos.Update(video);
-        await context.SaveChangesAsync();
-
-        return Ok(video);
+        return NoContent();
     }
 
     [HttpDelete("videos/{id:int}")]
-    public async Task<IActionResult> Delete([FromServices] VideoContext context, [FromRoute] int id)
+    public async Task<IActionResult> Delete([FromRoute] int id)
     {
-        var video = await context.Videos.FirstOrDefaultAsync(x => x.Id == id);
+        var video = await _context.Videos.FirstOrDefaultAsync(x => x.Id == id);
 
         if (video is null)
             return NotFound();
 
-        context.Videos.Remove(video);
-        await context.SaveChangesAsync();
+        _context.Videos.Remove(video);
+        await _context.SaveChangesAsync();
 
         return Ok();
     }
